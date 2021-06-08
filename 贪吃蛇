@@ -1,0 +1,245 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<time.h>
+#include<conio.h>
+#include<windows.h>
+#define LENGTH 15//设置围墙的长度 
+#define WIDTH 15//设置 的宽度 
+#define OVERLAP 5 //食物与蛇身重叠次数，在放置食物的时候需要用到 
+
+typedef struct snake { //定义一个蛇身结构体 ，该结构体为双向链表 
+	int x;//蛇身的横坐标 
+	int y;//蛇身的纵坐标 
+	struct snake* pre;//结构体指针，指向该蛇身的前面一节蛇身 
+	struct snake* next;//结构体指针，指向该蛇身的后面一节蛇身
+}snake;
+typedef struct foood {//定义一个食物结构体 
+	int x;//食物的横坐标 
+	int y;//食物的纵坐标 
+	char c;//食物的样子 
+}food;
+//函数部分：将实现贪吃蛇的功能划分为多个模块；每个模块的形式为一个函数，每个函数实现自己的功能。最后，将全部函数整合起来，通过程序结构流程图实现贪吃蛇
+void initsnake(snake* s);//初始化蛇
+int issnakeeatitself(snake* head);//当蛇头吃到蛇尾，该游戏结束
+int issnakeeatfood(snake* head, food* food);//判断蛇是否吃到食物
+snake* snakegrow(snake* head);//使蛇身的长度增加一节
+void creatfood(food* food);//随机生成一个食物
+int avoidoverlap(snake* head, food* food);//避免蛇身的坐标和食物的坐标重合，若重合，则重新生成一个食物
+void setfoodlocation(food* food, snake* head, int numoverlap, char c);//如果生成食物和蛇身重叠次数超过阈值，则直接按照蛇的移动方向设置食物位置
+char setcurkeybutton(char c1);//设置当前的按键
+void snakemove(snake* head, snake* rear, char c);//处理蛇的移动
+void drawpicture(snake* head, food* food);//绘制蛇身，蛇头，食物和围墙的样子//1,2,33行为预处理功能中的条件编译，目的是防止头文件的重复包含和编译
+//利用结构体指针初始化蛇信息
+void initsnake(snake* s) {
+	s->x = 1;
+	s->y = 1;
+	s->pre = NULL;
+	s->next = NULL;
+}//由于刚开始只有蛇头，初始化蛇头的坐标为（1，1），蛇头无前一节和后一节蛇，因此定义蛇身的前一节和后一节指针初始化为空
+//判断游戏结束：当蛇头吃的蛇身，游戏结束了
+int issnakeeatitself(snake* head) {
+	int gameover = 0;
+	snake* pt = head->next;
+	while (pt)
+	{
+		if (pt->x == head->x && pt->y == head->y) {
+			gameover = 1;
+			break;
+		}
+		pt = pt->next;
+	}
+	return gameover;
+}//44行创建新结构体指针pt指向蛇头的下一节蛇身，45-52为单链表的遍历操作，相当于检查每一节身，如果某一节蛇身的坐标与蛇头坐标相同，判断结束，游戏也相应结束
+//判断蛇是否吃到食物
+int issnakeeatfood(snake* head, food* food)//形参snake*head，food*food分别为结构体蛇身指针，结构体食物指针
+{
+	int eat;
+	if (head->x == food->x && head->y == food->y)
+		eat = 1;
+	else
+		eat = 0;
+	return eat;
+}//如果蛇身的坐标与食物的坐标相同，那么蛇吃到食物或者食物与蛇身重叠
+//使蛇身的长度增加一节
+snake *snakegrow(snake* head) {
+	snake  *p = (snake*)malloc(sizeof(snake));
+	snake  *pt = head;
+	while (pt->next)
+		pt = pt->next;
+	p->pre = pt;
+	pt->next = p;
+	p->next = NULL;
+	return  p;
+}//67行定义一个新的蛇身结构体p，使用malloc函数给p分配snake类型大小的动态地址；69,70行通过循环找到蛇尾；71-73行让新的蛇身结构体p作为蛇的新蛇尾，并建立与原来蛇尾的关系；最后返回新的蛇尾结构体指针
+//随机生成食物
+void creatfood(food* food) {
+	food->x = rand()%LENGTH;
+	food->y = rand() % WIDTH;
+	food->c = 65 + rand() % 26;
+}//78，79行随机生成食物的横坐标和纵坐标；80行随机生成字符来表示食物，这里用大写字符表示
+//避免食物坐标与蛇身坐标重合，若重合，则重新生成一个食物
+int avoidoverlap(snake* head, food* food) {
+	int t = 0, flag = 0;
+	while (flag) {
+		if (t > OVERLAP)
+			break;
+		t++;
+		flag = 1;
+		snake* pt = head;
+		while (pt) {
+			if (pt->x == food->x && pt->y == food->y) {
+				flag = 0;
+				creatfood(food);
+				break;
+			}
+			pt = pt->next;
+		}
+	}
+		return t;
+	}//当蛇变得越来越长时，蛇身坐标和食物坐标重叠的概率会越来越高，84行设置循环检测标识和检测重叠次数，85-98行为一个循环检测行为。
+//86行如果检测重叠t次数超过检测阈值，则结束循环重叠检测，100行返回t。91-98行利用新的蛇身结构体pt指向的蛇身的坐标和生成的食物坐标比较是否相同
+//如果相同表示食物与蛇身重叠，则生成新的食物，再次设置检测标志为0，继续进行下一次的蛇身与食物的重叠检测
+//如果食物和蛇身重叠检测次数超过检测阈值，则根据蛇的移动方向设置食物坐标
+void setfoodlocation(snake* head, food* food, int numoverlap, char c) {
+	if (numoverlap > OVERLAP) {
+		switch (c) {
+		case 'd':
+			food->x = head->x + 1;
+			food->y = head->y;
+			if (food->x >= LENGTH)
+				food->x -= LENGTH;
+		case 'a':
+			food->x = head->x - 1;
+			food->y = head->y;
+			if (food->x >= LENGTH)
+				food->x -= LENGTH;
+		case 'w':
+			food->x = head->x ;
+			food->y = head->y-1;
+			if (food->y >=WIDTH )
+				food->y-= WIDTH;
+
+		case 's':
+			food->x = head->x;
+			food->y = head->y+1;
+			if (food->y >= WIDTH)
+				food->y -= WIDTH;
+		}
+	}
+}//当食物和蛇身重叠检测次数超过检测阈值，为了使游戏快速进行，则将食物坐标位置直接位于蛇头的前面，从而避免两者坐标的重叠，这里使用switch语句来写程序。
+//如果超过检测阈值，根据玩家的操作，判断蛇的移动方向。这里用向右‘d'来说明，109-110行将食物坐标位于蛇头前面一个位置，111-112行处理食物位置超过边界的问题。
+//其他几个按键’a'，‘w'，’s'的原理与‘d'相似。
+//设置当前的按键，确定蛇的移动方向
+char setcurkeybutton(char c) {
+	char c1 = _getch();
+	if (c1 == 27)
+		return 'x';
+	if (c != 'd' && c == 'a')
+		return c = c1;
+	else if (c != 'a' && c == 'd')
+		return c = c1;
+	else if (c != 'w' && c== 's')
+		return c = c1;
+	else if (c != 's' && c== 'w')
+		c = c1;
+	return c;
+}//设置当前的按键，以便确定蛇的移动方向 
+//处理蛇的移动
+void snakemove(snake* head, snake* rear, char c) {
+	snake* pt = rear;
+	while (pt != head) {
+		pt->x = pt->pre->x;
+		pt->y = pt->pre->y;
+		pt = pt->pre;
+	}
+	if (c == 's') {
+		head->y += 1;
+		if (head->y >= WIDTH)
+			head->y -= WIDTH;
+	}
+	else if (c == 'w') {
+		head->y -= 1;
+		if (head->y >= WIDTH)
+			head->y -= WIDTH;
+	}
+	else if (c == 'a') {
+		head->x -= 1;
+		if (head->x >= LENGTH)
+			head->x -= LENGTH;
+	}
+	else if (c == 'd') {
+		head->x += 1;
+		if (head->x >= LENGTH)
+			head->x -= LENGTH;
+	}
+}//从蛇尾向蛇头前进，只要Pt不指向蛇头，将当前蛇身的前一节蛇身的坐标 给予当前蛇身，那么当前蛇身就向蛇头移动了一节蛇身的位置，155行当玩家按键为s时蛇头的纵坐标-1
+//157 行蛇头的纵坐标超过围墙宽度，则需要重新计算 蛇头的纵坐标 
+ //其他按键w，a，d的原理相同
+//绘制蛇，食物和围墙的样子
+void drawpicture(snake* head, food* food) {
+	int flag;
+	snake *pt;
+	system("cls");
+	printf("---------------\n");//绘制上围墙 
+	for (int j = 0; j < WIDTH; j++) {
+		printf("#");//绘制左围墙 
+		for (int i = 0; i < LENGTH; i++) {
+			flag=0;
+			pt=head;
+			while (pt) {//绘制蛇 
+				if (i == pt->x && j == pt->y) {
+					if (pt == head)
+				printf("@");//绘制蛇头 
+					else printf("0");//绘制蛇身 
+					flag = 1;
+					break;
+				}
+				pt = pt->next;
+			}
+			if (flag ==0) {//绘制食物 
+				if (i == food->x && j == food->y) {
+					putchar(food->c);
+					//putchar(food->c);
+					continue;
+				}
+				printf(" ");//绘制右围墙 
+			}
+		}
+		printf("#");
+		putchar('\n');
+	}
+	printf("---------------");//绘制下围墙 
+}
+int main()
+{
+	int testnum = 0,sum=0;//食物和蛇身重叠检测次数 
+	char c = 'd';//方向键初始化为d，蛇向右移动 
+	srand((unsigned)time(NULL));//随机种子
+	food food = { 5,8,'A' };//初始化食物 
+	snake snake, * head, * rear;//定义结构体和结构体指针 
+	initsnake(&snake);//初始化蛇身 
+	head = rear = &snake;//初始化 蛇只有蛇头 
+	while (1) {//游戏循环，直到游戏结束条件成立 
+		drawpicture(head, &food);//绘制地图，蛇，食物，围墙 
+		printf("\n");
+		printf("窦一瑞大笨猪的最终得分为：%d",sum);//游戏得分 
+		if (issnakeeatfood(head, &food)) {//蛇吃到食物后 
+			sum+=10;//游戏得分增加10 
+			rear = snakegrow(head);//蛇身增加一节 
+			creatfood(&food);//随机生成食物 
+			testnum = avoidoverlap(head, &food);//避免食物和蛇身坐标重叠，重新生成食物 
+			setfoodlocation(head,&food, testnum, c);//食物和蛇身重叠检测次数超过检测阈值，则根据蛇移动方向设置食物坐标 
+
+		}
+		// 按键处理 
+		if (_kbhit())c = setcurkeybutton(c); //设置当前按键 
+		if (c == 'x') break;
+		snakemove(head, rear, c);//蛇朝着蛇头方向移动 
+		if (issnakeeatitself(head)) {//判断游戏结束，当蛇头碰到蛇身 
+			puts("game over!\n");
+			break;
+		}
+		Sleep(150);//屏幕刷新时间间隔 
+	}
+	_getch();
+}
